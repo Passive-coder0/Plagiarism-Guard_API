@@ -8,12 +8,19 @@ CORS(app)
 
 detector = AIDetector()
 
+# Add a test route
+@app.route('/')
+def home():
+    return jsonify({"message": "AI Detector API is running!"})
+
 @app.route('/detect', methods=['POST'])
 def detect_text():
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
         text = data.get('text', '')
-        
         if not text:
             return jsonify({'error': 'No text provided'}), 400
 
