@@ -4,7 +4,7 @@ from flask_cors import CORS
 from model import AIDetector
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins
 
 detector = AIDetector()
 
