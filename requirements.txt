@@ -1,9 +1,10 @@
+flask
+flask-cors
 transformers
 torch
 sentence-transformers
 nltk
-flask
 scikit-learn
 numpy
 pandas
-flask_cors
+gunicorn

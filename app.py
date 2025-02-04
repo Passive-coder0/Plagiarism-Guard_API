@@ -4,32 +4,27 @@ from flask_cors import CORS
 from model import AIDetector
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins
+CORS(app)
 
+# Initialize detector at startup
 detector = AIDetector()
 
-# Add a test route
 @app.route('/')
 def home():
-    return jsonify({"message": "AI Detector API is running!"})
+    return jsonify({"message": "API is running"})
 
 @app.route('/detect', methods=['POST'])
 def detect_text():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-            
-        text = data.get('text', '')
-        if not text:
+        if not data or 'text' not in data:
             return jsonify({'error': 'No text provided'}), 400
 
-        result = detector.detect(text)
+        result = detector.detect(data['text'])
         return jsonify(result)
 
     except Exception as e:
+        print(f"Error: {str(e)}")  # Add logging
         return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
-    port = os.environ.get("PORT", 5000)
-    app.run(host='0.0.0.0', port=port)
+# Remove the if __name__ == '__main__' block
