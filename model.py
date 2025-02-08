@@ -1,12 +1,16 @@
-from sentence_transformers import SentenceTransformer, util
 import torch
 import re
+from transformers import RobertaTokenizer, RobertaForSequenceClassification
+import torch.nn.functional as F
 
 class AIDetector:
     def __init__(self):
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model.to(self.device)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
+        self.model = RobertaForSequenceClassification.from_pretrained(
+            "roberta-base",
+            num_labels=2
+        ).to(self.device)
         self.threshold = 0.8
 
     def calculate_readability_score(self, text):
@@ -26,8 +30,18 @@ class AIDetector:
             
         return round(readability_score), feedback
 
-    def calculate_ai_generated_score(self, similarity):
-        ai_score = (1 - similarity) * 100
+    def calculate_ai_generated_score(self, text):
+        inputs = self.tokenizer(
+            text,
+            return_tensors="pt",
+            max_length=512,
+            truncation=True
+        ).to(self.device)
+
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            probs = F.softmax(outputs.logits, dim=1)
+            ai_score = probs[0][1].item() * 100
         
         feedback = ""
         if ai_score > 70:
@@ -59,17 +73,11 @@ class AIDetector:
 
     def detect(self, text):
         try:
-            embedding = self.model.encode(text, convert_to_tensor=True)
-            reference_text = "This is a human-written essay."
-            reference_embedding = self.model.encode(reference_text, convert_to_tensor=True)
-            similarity = util.cos_sim(embedding, reference_embedding).item()
-
             readability_score, readability_feedback = self.calculate_readability_score(text)
-            ai_score, ai_feedback = self.calculate_ai_generated_score(similarity)
+            ai_score, ai_feedback = self.calculate_ai_generated_score(text)
             sources_score, sources_feedback = self.check_sources_attribution(text)
             citations_score, citations_feedback = self.check_citations(text)
 
-            # Combine all feedback into one comprehensive message
             overall_feedback = (
                 f"Analysis Results:\n\n"
                 f"Your text received the following scores:\n"
@@ -86,13 +94,12 @@ class AIDetector:
             )
 
             return {
-                
-                'readability': readability_score,
-                'ai_generated': ai_score,
+                'plagiarism_percentage': f"{readability_score}%",
+                'ai_generated': ai_score > 50,
                 'sources_attribution': sources_score,
+                'similar_words': readability_score,
                 'citations': citations_score,
-                'feedback': overall_feedback,
-                'similarity_score': round(similarity, 3)
+                'feedback': overall_feedback
             }
 
         except Exception as e:
@@ -107,4 +114,5 @@ class AIDetector:
             return "Your content shows promise but needs refinement. Consider implementing the suggestions above to strengthen your writing."
         else:
             return "Your content is generally strong, though there's still room for improvement in specific areas mentioned above."
-
+        
+        
