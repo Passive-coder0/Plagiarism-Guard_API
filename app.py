@@ -6,10 +6,12 @@ from model import AIDetector
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Initialize detector
-detector = AIDetector()
+os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
+os.environ['TRANSFORMERS_CACHE'] = '/tmp/transformers_cache'
 
-@app.route('/')
+detector = None
+
+@app.route('/detect', methods=['POST'])
 def home():
     return jsonify({"message": "API is running"})
 
